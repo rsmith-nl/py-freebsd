@@ -4,6 +4,6 @@
 #
 # Copyright © 2019 R.F. Smith <rsmith@xs4all.nl>
 # Created: 2019-07-08T02:07:49+0200
-# Last modified: 2019-07-08T02:09:44+0200
+# Last modified: 2019-07-08T02:33:39+0200
 # setup file    perm system file         commands
-freebsd.py      600 /home/rsmith/python-modules/freebsd.py
+freebsd.py      600 /home/rsmith/python_modules/freebsd.py
