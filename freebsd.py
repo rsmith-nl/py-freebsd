@@ -4,7 +4,7 @@
 # Copyright © 2019 R.F. Smith <rsmith@xs4all.nl>.
 # SPDX-License-Identifier: MIT
 # Created: 2019-07-07T23:56:25+0200
-# Last modified: 2019-07-08T00:47:11+0200
+# Last modified: 2019-07-08T21:19:31+0200
 """Python bindings for some FreeBSD library calls"""
 
 import ctypes
@@ -108,3 +108,12 @@ def osrevision():
     """Returns operating system revision"""
     rv = sysctlbyname('kern.osrevision', convert=to_int)
     return rv
+
+
+def osreldate():
+    """
+    Returns the version of the currently running FreeBSD kernel.
+
+    This is the value of __FreeBSD_version.
+    """
+    return _libc.getosreldate()
