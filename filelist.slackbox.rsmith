@@ -1,9 +1,0 @@
-# file: filelist.slackbox.rsmith
-# vim:fileencoding=utf-8:fdm=marker:ft=conf
-# List of files with their install locations.
-#
-# Copyright © 2019 R.F. Smith <rsmith@xs4all.nl>
-# Created: 2019-07-08T02:07:49+0200
-# Last modified: 2019-07-08T02:33:39+0200
-# setup file    perm system file         commands
-freebsd.py      600 /home/rsmith/python_modules/freebsd.py
