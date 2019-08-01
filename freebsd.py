@@ -4,8 +4,8 @@
 # Copyright © 2019 R.F. Smith <rsmith@xs4all.nl>.
 # SPDX-License-Identifier: MIT
 # Created: 2019-07-07T23:56:25+0200
-# Last modified: 2019-07-08T21:19:31+0200
-"""Python bindings for some FreeBSD library calls"""
+# Last modified: 2019-08-02T01:36:34+0200
+"""Python bindings for some FreeBSD library calls on 64-bit architectures."""
 
 import ctypes
 import ctypes.util
@@ -104,8 +104,15 @@ def hostuuid():
     return rv
 
 
+def osrelease():
+    """Returns operating system release."""
+    # buflen according to /usr/include/sys/jail.h
+    rv = sysctlbyname('kern.osrelease', buflen=32, convert=to_string)
+    return rv
+
+
 def osrevision():
-    """Returns operating system revision"""
+    """Returns operating system revision."""
     rv = sysctlbyname('kern.osrevision', convert=to_int)
     return rv
 
@@ -117,3 +124,34 @@ def osreldate():
     This is the value of __FreeBSD_version.
     """
     return _libc.getosreldate()
+
+
+def version():
+    """Returns operation system version."""
+    rv = sysctlbyname('kern.version', buflen=256, convert=to_string)
+    return rv
+
+
+# Note: On FreeBSD 11.3, the definition of “struct ntptimeval” used in
+# ntp_gettime(2) do not match those of /usr/include/sys/timex.h! In this
+# module, I have therefore followed the latter!
+
+class Ntptimeval(ctypes.Structure):
+    _fields_ = [("tv_sec", ctypes.c_longlong), ("tv_nsec", ctypes.c_long),
+                ("maxerror", ctypes.c_long), ("esterror", ctypes.c_long),
+                ("tai", ctypes.c_long), ("time_state", ctypes.c_int)]
+
+    def __repr__(self):
+        a = f"Ntptimeval(tv_sec={self.tv_sec}, tv_nsec={self.tv_nsec}, "
+        b = f"maxerror={self.maxerror}, esterror={self.esterror}, "
+        c = f"tai={self.tai}, time_state={self.time_state})"
+        return a + b + c
+
+
+def ntp_gettime():
+    """Fills and returns an Ntptimeval instance."""
+    tv = Ntptimeval(0, 0, 0, 0, 0, 0)
+    # Note: the return value of ntp_gettime is the same as the time_state
+    # member of Ntptimeval. So don't bother returning it separately.
+    _libc.ntp_gettime(ctypes.byref(tv))
+    return tv
