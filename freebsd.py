@@ -4,7 +4,7 @@
 # Copyright © 2019 R.F. Smith <rsmith@xs4all.nl>.
 # SPDX-License-Identifier: MIT
 # Created: 2019-07-07T23:56:25+0200
-# Last modified: 2019-08-02T01:36:34+0200
+# Last modified: 2019-08-12T21:51:02+0200
 """Python bindings for some FreeBSD library calls on 64-bit architectures."""
 
 import ctypes
@@ -136,6 +136,16 @@ def version():
 # ntp_gettime(2) do not match those of /usr/include/sys/timex.h! In this
 # module, I have therefore followed the latter!
 
+_time_state = {
+    0:  'TIME_OK',
+    1:  'TIME_INS',
+    2:  'TIME_DEL',
+    3:  'TIME_OOP',
+    4:  'TIME_WAIT',
+    5:  'TIME_ERROR',
+}
+
+
 class Ntptimeval(ctypes.Structure):
     _fields_ = [("tv_sec", ctypes.c_longlong), ("tv_nsec", ctypes.c_long),
                 ("maxerror", ctypes.c_long), ("esterror", ctypes.c_long),
@@ -144,7 +154,7 @@ class Ntptimeval(ctypes.Structure):
     def __repr__(self):
         a = f"Ntptimeval(tv_sec={self.tv_sec}, tv_nsec={self.tv_nsec}, "
         b = f"maxerror={self.maxerror}, esterror={self.esterror}, "
-        c = f"tai={self.tai}, time_state={self.time_state})"
+        c = f"tai={self.tai}, time_state={_time_state[self.time_state]})"
         return a + b + c
 
 
