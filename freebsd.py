@@ -4,14 +4,14 @@
 # Copyright © 2019 R.F. Smith <rsmith@xs4all.nl>.
 # SPDX-License-Identifier: MIT
 # Created: 2019-07-07T23:56:25+0200
-# Last modified: 2019-08-18T16:20:22+0200
+# Last modified: 2019-08-12T21:51:02+0200
 """Python bindings for some FreeBSD library calls on 64-bit architectures."""
 
 import ctypes
+import ctypes.util
 
-# Equivalent to dlopen(NULL) to open the main process; this means the Python
-# interpreter, which links the C library in.
-_libc = ctypes.cdll.LoadLibrary(None, use_errno=True)
+# Load the C library
+_libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
 
 
 def to_int(value):
