@@ -4,7 +4,7 @@
 # Copyright © 2019 R.F. Smith <rsmith@xs4all.nl>.
 # SPDX-License-Identifier: MIT
 # Created: 2019-07-07T23:56:25+0200
-# Last modified: 2019-08-12T21:51:02+0200
+# Last modified: 2021-03-14T09:18:26+0100
 """Python bindings for some FreeBSD library calls on 64-bit architectures."""
 
 import ctypes
@@ -14,74 +14,99 @@ import ctypes.util
 _libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
 
 
-def to_int(value):
-    """Convert binary sysctl value to integer."""
-    return int.from_bytes(value, byteorder='little')
-
-
-def to_degC(value):
-    """Convert binary sysctl value to degree Centigrade."""
-    return round(int.from_bytes(value, byteorder='little') / 10 - 273.15, 1)
-
-
-def to_string(value):
-    """Convert binary sysctl value to UTF-8 string."""
-    return value.strip(b'\x00').decode('utf-8')
-
-
-def sysctlbyname(name, buflen=4, convert=None):
+def sysctlnametomib(name):
     """
-    Python wrapper for sysctlbyname(3).
+    Python wrapper for sysctlnametomib(3).
 
     Arguments:
-        name (str): Name of the sysctl to query
-        buflen (int): Length of the data buffer to use.
-        convert: Optional function to convert the data.
+        name(str): Name of the sysctl
 
-    Returns:
-        The requested binary data, converted if desired.
+    Returns
+        A ctypes array containing the MIB vector.
     """
+    ln = name.count(".") + 1
+    mib_t = ctypes.c_int * ln
+    mib = mib_t()
+    size_t = ctypes.c_size_t * 1
+    size = size_t(ln)
     name_in = ctypes.c_char_p(bytes(name, encoding='ascii'))
-    oldlen = ctypes.c_size_t(buflen)
-    oldlenp = ctypes.byref(oldlen)
-    oldp = ctypes.create_string_buffer(buflen)
-    rv = _libc.sysctlbyname(name_in, oldp, oldlenp, None, ctypes.c_size_t(0))
+    rv = _libc.sysctlnametomib(name_in, ctypes.byref(mib), ctypes.byref(size))
     if rv != 0:
         errno = ctypes.get_errno()
-        raise ValueError(f'sysctlbyname error: {errno}')
-    if convert:
-        return convert(oldp.raw[:buflen])
-    return oldp.raw[:buflen]
+        raise ValueError(f'sysctlnametomib error: {errno}')
+    return mib
 
 
-def sysctl(name, buflen=4, convert=None):
-    """
-    Python wrapper for sysctl(3).
+def auto(data):
+    """Convert data returned from a sysctl based on the content
 
     Arguments:
-        name: list or tuple of integers.
-        buflen (int): Length of the data buffer to use.
-        convert: Optional function to convert the data.
-
-    Returns:
-        The requested binary data, converted if desired.
+        data: string of bytes
     """
-    cnt = len(name)
-    mib = ctypes.c_int * cnt
-    name_in = mib(*name)
-    oldlen = ctypes.c_size_t(buflen)
-    oldlenp = ctypes.byref(oldlen)
-    oldp = ctypes.create_string_buffer(buflen)
+    if len(data) in [4, 8]:
+        return to_int(data)
+    if data.endswith(b'\x00') and sum(1 for j in data if j == 0) == 1:
+        return to_string(data)
+    return data
+
+
+def _internal_sysctl(mib, namelen, convert):
+    """Common parts of sysctl and sysctlbyname factored out."""
+    # Retrieve the length of the necessary data buffer
+    datasize = ctypes.c_size_t()
     rv = _libc.sysctl(
-        ctypes.byref(name_in), ctypes.c_uint(cnt), oldp, oldlenp, None,
+        ctypes.byref(mib), namelen, None, ctypes.byref(datasize), None, ctypes.c_size_t(0)
+    )
+    # Retrieve the data
+    oldlen = ctypes.c_size_t(datasize.value)
+    oldp = ctypes.create_string_buffer(datasize.value)
+    rv = _libc.sysctl(
+        ctypes.byref(mib), namelen, ctypes.byref(oldp), ctypes.byref(oldlen), None,
         ctypes.c_size_t(0)
     )
     if rv != 0:
         errno = ctypes.get_errno()
         raise ValueError(f'sysctl error: {errno}')
     if convert:
-        return convert(oldp.raw[:buflen])
-    return oldp.raw[:buflen]
+        return convert(oldp.raw)
+    return oldp.raw
+
+
+def sysctlbyname(name, convert=auto):
+    """
+    Python wrapper for sysctlbyname(3).
+
+    Arguments:
+        name (str): Name of the sysctl to query
+        convert: Function to convert the data.
+            Defaults to “convert=auto” for automatic conversion.
+            Use “convert=None” for no conversion.
+
+    Returns:
+        The requested binary data, converted if desired.
+    """
+    mib = sysctlnametomib(name)
+    namelen = ctypes.c_uint(len(mib))
+    return _internal_sysctl(mib, namelen, convert=convert)
+
+
+def sysctl(name, convert=auto):
+    """
+    Python wrapper for sysctl(3).
+
+    Arguments:
+        name: List or tuple of integers.
+        convert: Function to convert the data.
+            Defaults to “convert=auto” for automatic conversion.
+            Use “convert=None” for no conversion.
+
+    Returns:
+        The requested data, converted if desired.
+    """
+    mib_t = ctypes.c_int * len(name)
+    mib = mib_t(*name)
+    namelen = ctypes.c_uint(len(name))
+    return _internal_sysctl(mib, namelen, convert=convert)
 
 
 def setproctitle(name):
@@ -106,14 +131,13 @@ def hostuuid():
 
 def osrelease():
     """Returns operating system release."""
-    # buflen according to /usr/include/sys/jail.h
-    rv = sysctlbyname('kern.osrelease', buflen=32, convert=to_string)
+    rv = sysctlbyname('kern.osrelease')
     return rv
 
 
 def osrevision():
     """Returns operating system revision."""
-    rv = sysctlbyname('kern.osrevision', convert=to_int)
+    rv = sysctlbyname('kern.osrevision')
     return rv
 
 
@@ -128,7 +152,7 @@ def osreldate():
 
 def version():
     """Returns operation system version."""
-    rv = sysctlbyname('kern.version', buflen=256, convert=to_string)
+    rv = sysctlbyname('kern.version')
     return rv
 
 
@@ -165,3 +189,18 @@ def ntp_gettime():
     # member of Ntptimeval. So don't bother returning it separately.
     _libc.ntp_gettime(ctypes.byref(tv))
     return tv
+
+
+def to_int(value):
+    """Convert binary sysctl value to integer."""
+    return int.from_bytes(value, byteorder='little')
+
+
+def to_degC(value):
+    """Convert binary sysctl value to degree Centigrade."""
+    return round(int.from_bytes(value, byteorder='little') / 10 - 273.15, 1)
+
+
+def to_string(value):
+    """Convert binary sysctl value to UTF-8 string."""
+    return value.strip(b'\x00').decode('utf-8')
