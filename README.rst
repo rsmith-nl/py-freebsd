@@ -5,7 +5,10 @@ FreeBSD module for Python 3
 :tags: FreeBSD, ctypes
 :author: Roland Smith
 
-.. Last modified: 2019-08-02T01:42:56+0200
+.. Last modified: 2022-01-29T22:39:14+0100
+
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+    :target: https://github.com/psf/black
 
 Introduction
 ============
