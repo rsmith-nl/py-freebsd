@@ -4,14 +4,14 @@
 # Copyright © 2019 R.F. Smith <rsmith@xs4all.nl>.
 # SPDX-License-Identifier: MIT
 # Created: 2019-07-07T23:56:25+0200
-# Last modified: 2021-03-14T09:18:26+0100
+# Last modified: 2024-07-23T22:29:54+0200
 """Python bindings for some FreeBSD library calls on 64-bit architectures."""
 
 import ctypes
 import ctypes.util
 
-# Load the C library
 _libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
+__version__ = "2024.7"
 
 
 def sysctlnametomib(name):
